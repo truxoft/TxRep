@@ -1,0 +1,20 @@
+TxREP - Reputation Plugin for SpamAssassin
+==========================================
+
+v1.0.4  2014/03/06  Ivo Truxa
+ * BF:  Missing return value in open_storages prevented the 1st MSG_ID lookup
+ * ENH: Added time stamp into the signedby field at the MSG_ID entry in the database
+ * ENH: Added setting 'txrep_expiry_days'
+ * ENH: Added plugin hook sub learner_expire_old_training (not working yet, dummy sub)
+
+v1.0.3  2014/03/06  Ivo Truxa
+ * BF: DKIM signatures were not stored due to a duplicate variable declaration
+
+v1.0.2  2014/03/05  Ivo Truxa
+ * CHG: Debug message at reopening the db removed
+
+v1.0.1  2014/03/05  Ivo Truxa
+ * BF: sa-learning failed at empty arrays for untrusted or external relays
+
+v1.0.0  2014/03/05  Ivo Truxa
+ * Intiail release
