@@ -1,8 +1,12 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
-v1.0.5  2014/03/06  Ivo Truxa
- * BF(6908) at spam scores we'll use the connecting IP from the first untursted 
+v1.0.6  2014/03/08  Ivo Truxa
+ * BF(AWL6357) whe message comes from internal networks, the IP is now set to
+   127.0.0.1, to distinguish it from possibly forged 'none' IP or new emails
+
+v1.0.5  2014/03/08  Ivo Truxa
+ * BF(AWL6908) at spam scores we'll use the connecting IP from the first untursted 
    relay (preferebaly, if exists), or the last available IP from trusted relay
    At ham scores, we assume no spoofing, and go for the last public IP as it was 
    previously at AWL.

@@ -1189,10 +1189,12 @@ sub check_senders_reputation {
 	if (defined $rly->{helo} && $rly->{helo} !~ /^\[?$rly->{ip}\]?$/ && $rly->{helo} !~ /$domain/i && $rly->{helo} !~ /$from/i ) {
 	    $helo   = $rly->{helo};
 	}
-	# use only trusted ID, but use the first untrusted IP (if available)
+	# use only trusted ID, but use the first untrusted IP (if available) (AWL bug 6908)
 	# at low spam scores (<2) ignore trusted/untrusted
-	if ((--$trusteds >= 0 || $msgscore<2) && !$msg_id && $rly->{id})            {$msg_id = $rly->{id};}
-	if (($trusteds  >= -1 || $msgscore<2) && !$rly->{ip_private} && $rly->{ip}) {$origip = $rly->{ip};}
+	# set IP to 127.0.0.1 for any internal IP, so that it can be distinguished from none (AWL bug 6357)
+	if ((--$trusteds >=  0 || $msgscore<2) && !$msg_id && $rly->{id})            {$msg_id = $rly->{id};}
+	if (($trusteds   >= -1 || $msgscore<2) && !$rly->{ip_private} && $rly->{ip}) {$origip = $rly->{ip};}
+	if ( $trusteds   >=  0     && !$origip &&  $rly->{ip_private} && $rly->{ip}) {$origip = '127.0.0.1';}
     }
   }
 
@@ -1808,7 +1810,7 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.5
+ revision       1.0.6
  date           2014/03/08
 
 =cut
