@@ -1,6 +1,14 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.5  2014/03/06  Ivo Truxa
+ * BF(6908) at spam scores we'll use the connecting IP from the first untursted 
+   relay (preferebaly, if exists), or the last available IP from trusted relay
+   At ham scores, we assume no spoofing, and go for the last public IP as it was 
+   previously at AWL.
+ * CHG: EnvelopeFrom:addr now used when no From:addr available
+ * CHG: HELO names now better checked against redundancy with IP's and domains
+
 v1.0.4  2014/03/06  Ivo Truxa
  * BF:  Missing return value in open_storages prevented the 1st MSG_ID lookup
  * ENH: Added time stamp into the signedby field at the MSG_ID entry in the database
@@ -8,7 +16,8 @@ v1.0.4  2014/03/06  Ivo Truxa
  * ENH: Added plugin hook sub learner_expire_old_training (not working yet, dummy sub)
 
 v1.0.3  2014/03/06  Ivo Truxa
- * BF: DKIM signatures were not stored due to a duplicate variable declaration
+ * BF:  DKIM signatures were not stored due to a duplicate variable declaration
+ * ENH: avoiding duplicate entries with HELO equal to the IP or the domain name
 
 v1.0.2  2014/03/05  Ivo Truxa
  * CHG: Debug message at reopening the db removed

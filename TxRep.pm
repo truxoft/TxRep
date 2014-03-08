@@ -1175,18 +1175,27 @@ sub check_senders_reputation {
                  Mail::SpamAssassin::Plugin::Bayes->get_msgid($pms->{msg}) ||
                  $pms->get('Message-Id') || $pms->get('Message-ID') || $pms->get('MESSAGE-ID') || $pms->get('MESSAGEID');
 
+  my $from   = lc $pms->get('From:addr') || $pms->get('EnvelopeFrom:addr');;
+  return 0 unless $from =~ /\S/;
+  my $domain = $from;
+  $domain =~ s/^.+@//;
+
   my ($origip, $helo);
   if (defined $pms->{relays_trusted} || defined $pms->{relays_untrusted}) {
-    foreach my $rly (reverse (@{$pms->{relays_trusted}}, @{$pms->{relays_untrusted}})) {
-        # get the first available HELO, regardless of private/public or trusted/untrusted
-        if (!defined $helo && defined $rly->{helo}) {$helo = $rly->{helo};}
-        next if ($rly->{ip_private});
-        if (!$origip && $rly->{ip}) {$origip = $rly->{ip};}
-        if (!$msg_id && $rly->{id}) {$msg_id = $rly->{id};}
+    my $trusteds = @{$pms->{relays_trusted}};
+    foreach my $rly ( @{$pms->{relays_trusted}}, @{$pms->{relays_untrusted}} ) {
+	# Get the last found HELO, regardless of private/public or trusted/untrusted
+	# Avoiding a redundant duplicate entry if HELO is equal/similar to another identificator
+	if (defined $rly->{helo} && $rly->{helo} !~ /^\[?$rly->{ip}\]?$/ && $rly->{helo} !~ /$domain/i && $rly->{helo} !~ /$from/i ) {
+	    $helo   = $rly->{helo};
+	}
+	# use only trusted ID, but use the first untrusted IP (if available)
+	# at low spam scores (<2) ignore trusted/untrusted
+	if ((--$trusteds >= 0 || $msgscore<2) && !$msg_id && $rly->{id})            {$msg_id = $rly->{id};}
+	if (($trusteds  >= -1 || $msgscore<2) && !$rly->{ip_private} && $rly->{ip}) {$origip = $rly->{ip};}
     }
   }
 
-dbg("TxRep: DEBUG 1");
   if ($self->{conf}->{txrep_track_messages}) {
     if ($msg_id) {
         my $msg_rep = $self->check_reputations($pms, 'MSG_ID', $msg_id, undef, $date, undef);
@@ -1227,20 +1236,7 @@ dbg("TxRep: DEBUG 1");
     }
   }
 
-  my $from   = lc $pms->get('From:addr');
-  return 0 unless $from =~ /\S/;
-  my $domain = $from;
-  $domain =~ s/^.+@//;
-
-  # avoiding a redundant duplicate entry if HELO is equal to another identificator
-  if ( $helo =~ /^\[?$origip\]?$/ || lc($helo) eq lc($domain) || lc($helo) eq lc($from) ) {
-    undef $helo;
-  }
-
-  my $signedby;
-  if ($self->{conf}->{auto_whitelist_distinguish_signed}) {
-    $signedby = $pms->get_tag('DKIMDOMAIN');
-  }
+  my $signedby = ($self->{conf}->{auto_whitelist_distinguish_signed})? $pms->get_tag('DKIMDOMAIN') : undef;
   dbg("TxRep: active, %s pre-score: %s, autolearn score: %s, IP: %s, address: %s %s",
     $msg_id       || '',
     $pms->{score} || '?',
@@ -1250,8 +1246,8 @@ dbg("TxRep: DEBUG 1");
     $signedby ? "signed by $signedby" : '(unsigned)'
   );
 
-  my $ip  = (defined $signedby)? undef : $origip;
-  if (defined $signedby) {$domain = $signedby;}
+  my $ip  = ($signedby)? undef : $origip;
+  if ($signedby) {$domain = $signedby;}
 
   my $totalweight      = 0;
   $self->{totalweight} = $totalweight;
@@ -1812,8 +1808,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.4
- date           2014/03/06
+ revision       1.0.5
+ date           2014/03/08
 
 =cut
 
