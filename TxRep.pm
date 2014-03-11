@@ -659,6 +659,27 @@ turning on this option.
   });
 
 
+=item B<txrep_spf>
+
+  0 | 1                 (default: 1)
+
+When enabled, TxRep will treat any IP address using a given email address as
+the same authorized identity, and will not associate any IP address with it.
+(The same happens with valid DKIM signatures. No option available for DKIM).
+
+Note: at domains that define the useless SPF +all (pass all), no IP would be
+ever associated with the email address, and all addresses (incl. the froged
+ones) would be treated as coming from the authorized source. However, such
+domains are hopefuly rare, and ask for this kind of treatment anyway.
+
+=cut  # ...................................................................
+  push (@cmds, {
+    setting     => 'txrep_spf',
+    default     => 1,
+    type        => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
+  });
+
+
 # -------------------------------------------------------------------------
 =head2 REPUTATION WEIGHTS
 
@@ -1126,18 +1147,22 @@ sub remove_address    {my $self=shift; return $self->_fn_envelope(@_,undef, "rem
 5. No IP checking at signed emails (signature authenticates the email
    instead of the IP address)
 
-6. No signature used for standalone EMAIL reputation (would be redundant,
+6. No IP checking at SPF pass (we assume the domain owner is responsable
+   for all IP's he authorizes to send from, hence we use the same identity
+   for all of them)
+
+7. No signature used for standalone EMAIL reputation (would be redundant,
    since no IP is used at signed EMAIL_IP reputation, and we would store
    two identical hits)
 
-7. When available, the DKIM signer is used instead of the domain name for
+8. When available, the DKIM signer is used instead of the domain name for
    the DOMAIN reputation
 
-8. No IP and no signature used for HELO reputation (despite the possibility
+9. No IP and no signature used for HELO reputation (despite the possibility
    of the possible existence of multiple computers with the same HELO)
 
-9. The full (unmasked IP) address is used (in the address field, instead the
-   IP field) for the standalone IP reputation
+10. The full (unmasked IP) address is used (in the address field, instead the
+    IP field) for the standalone IP reputation
 
 =cut
 ###########################################################################
@@ -1248,7 +1273,7 @@ sub check_senders_reputation {
     $signedby ? "signed by $signedby" : '(unsigned)'
   );
 
-  my $ip  = ($signedby)? undef : $origip;
+  my $ip  = ($signedby || $pms->{spf_pass} && $self->{conf}->{txrep_spf})? undef : $origip;
   if ($signedby) {$domain = $signedby;}
 
   my $totalweight      = 0;
@@ -1810,8 +1835,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.6
- date           2014/03/08
+ revision       1.0.7
+ date           2014/03/11
 
 =cut
 
