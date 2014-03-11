@@ -659,7 +659,6 @@ turning on this option.
   });
 
 
-# -------------------------------------------------------------------------
 =item B<txrep_spf>
 
   0 | 1                 (default: 1)
@@ -1274,8 +1273,14 @@ sub check_senders_reputation {
     $signedby ? "signed by $signedby" : '(unsigned)'
   );
 
-  my $ip  = ($signedby || $pms->{spf_pass} && $self->{conf}->{txrep_spf})? undef : $origip;
-  if ($signedby) {$domain = $signedby;}
+  my $ip = $origip;
+  if ($signedby) {
+    $ip       = undef;
+    $domain   = $signedby;
+  } elsif ($pms->{spf_pass} && $self->{conf}->{txrep_spf}) {
+    $ip       = undef;
+    $signedby = 'SPF';
+  }
 
   my $totalweight      = 0;
   $self->{totalweight} = $totalweight;
