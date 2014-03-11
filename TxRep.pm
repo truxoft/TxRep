@@ -659,6 +659,27 @@ turning on this option.
   });
 
 
+=item B<txrep_spf>
+
+  0 | 1                 (default: 1)
+
+When enabled, TxRep will treat any IP address using a given email address as
+the same authorized identity, and will not associate any IP address with it.
+(The same happens with valid DKIM signatures. No option available for DKIM).
+
+Note: at domains that define the useless SPF +all (pass all), no IP would be
+ever associated with the email address, and all addresses (incl. the froged
+ones) would be treated as coming from the authorized source. However, such
+domains are hopefuly rare, and ask for this kind of treatment anyway.
+
+=cut  # ...................................................................
+  push (@cmds, {
+    setting     => 'txrep_spf',
+    default     => 1,
+    type        => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
+  });
+
+
 # -------------------------------------------------------------------------
 =head2 REPUTATION WEIGHTS
 
@@ -1126,18 +1147,22 @@ sub remove_address    {my $self=shift; return $self->_fn_envelope(@_,undef, "rem
 5. No IP checking at signed emails (signature authenticates the email
    instead of the IP address)
 
-6. No signature used for standalone EMAIL reputation (would be redundant,
+6. No IP checking at SPF pass (we assume the domain owner is responsable
+   for all IP's he authorizes to send from, hence we use the same identity
+   for all of them)
+
+7. No signature used for standalone EMAIL reputation (would be redundant,
    since no IP is used at signed EMAIL_IP reputation, and we would store
    two identical hits)
 
-7. When available, the DKIM signer is used instead of the domain name for
+8. When available, the DKIM signer is used instead of the domain name for
    the DOMAIN reputation
 
-8. No IP and no signature used for HELO reputation (despite the possibility
+9. No IP and no signature used for HELO reputation (despite the possibility
    of the possible existence of multiple computers with the same HELO)
 
-9. The full (unmasked IP) address is used (in the address field, instead the
-   IP field) for the standalone IP reputation
+10. The full (unmasked IP) address is used (in the address field, instead the
+    IP field) for the standalone IP reputation
 
 =cut
 ###########################################################################
@@ -1175,18 +1200,29 @@ sub check_senders_reputation {
                  Mail::SpamAssassin::Plugin::Bayes->get_msgid($pms->{msg}) ||
                  $pms->get('Message-Id') || $pms->get('Message-ID') || $pms->get('MESSAGE-ID') || $pms->get('MESSAGEID');
 
+  my $from   = lc $pms->get('From:addr') || $pms->get('EnvelopeFrom:addr');;
+  return 0 unless $from =~ /\S/;
+  my $domain = $from;
+  $domain =~ s/^.+@//;
+
   my ($origip, $helo);
   if (defined $pms->{relays_trusted} || defined $pms->{relays_untrusted}) {
-    foreach my $rly (reverse (@{$pms->{relays_trusted}}, @{$pms->{relays_untrusted}})) {
-        # get the first available HELO, regardless of private/public or trusted/untrusted
-        if (!defined $helo && defined $rly->{helo}) {$helo = $rly->{helo};}
-        next if ($rly->{ip_private});
-        if (!$origip && $rly->{ip}) {$origip = $rly->{ip};}
-        if (!$msg_id && $rly->{id}) {$msg_id = $rly->{id};}
+    my $trusteds = @{$pms->{relays_trusted}};
+    foreach my $rly ( @{$pms->{relays_trusted}}, @{$pms->{relays_untrusted}} ) {
+	# Get the last found HELO, regardless of private/public or trusted/untrusted
+	# Avoiding a redundant duplicate entry if HELO is equal/similar to another identificator
+	if (defined $rly->{helo} && $rly->{helo} !~ /^\[?$rly->{ip}\]?$/ && $rly->{helo} !~ /$domain/i && $rly->{helo} !~ /$from/i ) {
+	    $helo   = $rly->{helo};
+	}
+	# use only trusted ID, but use the first untrusted IP (if available) (AWL bug 6908)
+	# at low spam scores (<2) ignore trusted/untrusted
+	# set IP to 127.0.0.1 for any internal IP, so that it can be distinguished from none (AWL bug 6357)
+	if ((--$trusteds >=  0 || $msgscore<2) && !$msg_id && $rly->{id})            {$msg_id = $rly->{id};}
+	if (($trusteds   >= -1 || $msgscore<2) && !$rly->{ip_private} && $rly->{ip}) {$origip = $rly->{ip};}
+	if ( $trusteds   >=  0     && !$origip &&  $rly->{ip_private} && $rly->{ip}) {$origip = '127.0.0.1';}
     }
   }
 
-dbg("TxRep: DEBUG 1");
   if ($self->{conf}->{txrep_track_messages}) {
     if ($msg_id) {
         my $msg_rep = $self->check_reputations($pms, 'MSG_ID', $msg_id, undef, $date, undef);
@@ -1227,20 +1263,7 @@ dbg("TxRep: DEBUG 1");
     }
   }
 
-  my $from   = lc $pms->get('From:addr');
-  return 0 unless $from =~ /\S/;
-  my $domain = $from;
-  $domain =~ s/^.+@//;
-
-  # avoiding a redundant duplicate entry if HELO is equal to another identificator
-  if ( $helo =~ /^\[?$origip\]?$/ || lc($helo) eq lc($domain) || lc($helo) eq lc($from) ) {
-    undef $helo;
-  }
-
-  my $signedby;
-  if ($self->{conf}->{auto_whitelist_distinguish_signed}) {
-    $signedby = $pms->get_tag('DKIMDOMAIN');
-  }
+  my $signedby = ($self->{conf}->{auto_whitelist_distinguish_signed})? $pms->get_tag('DKIMDOMAIN') : undef;
   dbg("TxRep: active, %s pre-score: %s, autolearn score: %s, IP: %s, address: %s %s",
     $msg_id       || '',
     $pms->{score} || '?',
@@ -1250,8 +1273,14 @@ dbg("TxRep: DEBUG 1");
     $signedby ? "signed by $signedby" : '(unsigned)'
   );
 
-  my $ip  = (defined $signedby)? undef : $origip;
-  if (defined $signedby) {$domain = $signedby;}
+  my $ip = $origip;
+  if ($signedby) {
+    $ip       = undef;
+    $domain   = $signedby;
+  } elsif ($pms->{spf_pass} && $self->{conf}->{txrep_spf}) {
+    $ip       = undef;
+    $signedby = 'SPF';
+  }
 
   my $totalweight      = 0;
   $self->{totalweight} = $totalweight;
@@ -1812,8 +1841,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.4
- date           2014/03/06
+ revision       1.0.7
+ date           2014/03/11
 
 =cut
 
