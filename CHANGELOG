@@ -1,6 +1,10 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.8  2014/03/14  Ivo Truxa
+ * BF:  removed doubled "defined" from open_storages() sub
+ * ENH: more foolproof checking at dual storages, avoding duplicate records 
+
 v1.0.7  2014/03/11  Ivo Truxa
  * ENH: new option txrep_spf to enable/disable suppressing of IPs at SPF pass
  * ENH: no IP address is recorded at SPF pass (when txrep_spf enabled)

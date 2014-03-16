@@ -1547,24 +1547,49 @@ sub open_storages {
   if (defined $factory) {
     $self->{checker} = $self->{default_storage} = $factory->new_checker($self->{main});
 
-    if ($self->{conf}->{txrep_user2global_ratio} && defined !defined $self->{global_storage}) {
-        my $sql_override_orig = $self->{conf}->{user_awl_sql_override_username};
-        my $awl_path_orig     = $self->{conf}->{auto_whitelist_path};
-        my $sql_global = ref($factory)=~/SQLasedAddrList/ && defined $self->{conf}->{user_awl_sql_override_username};
-        my $dbb_global = ref($factory)=~/DBBasedAddrList/ && $awl_path_orig !~ /__userstate__/;
-        if ($sql_global || $dbb_global) {
-            $self->{conf}->{user_awl_sql_override_username} = '';
-            $self->{conf}->{auto_whitelist_path}            = '__userstate__/tx-reputation';
-            $self->{global_storage} = $self->{default_storage};
-            $self->{user_storage}   = $factory->new_checker($self->{main});
-        } else {
-            $self->{conf}->{user_awl_sql_override_username} = 'GLOBAL';
-            $self->{conf}->{auto_whitelist_path}            = '__local_state_dir__/tx-reputation';
-            $self->{global_storage} = $factory->new_checker($self->{main});
-            $self->{user_storage}   = $self->{default_storage};
-        }
-        $self->{conf}->{user_awl_sql_override_username} = $sql_override_orig;
-        $self->{conf}->{auto_whitelist_path}            = $awl_path_orig;
+    if ($self->{conf}->{txrep_user2global_ratio} && !defined $self->{global_storage}) {
+	# hack to handle the BDB and SQL factory types of the storage object
+	# TODO: add an a method to the handler class instead
+	my ($storage_type, $is_global);
+	
+	if (ref($factory) =~ /SQLasedAddrList/) {
+	    $is_global    = defined $self->{conf}->{user_awl_sql_override_username};
+	    $storage_type = 'SQL';
+	    if ($is_global && $self->{conf}->{user_awl_sql_override_username} eq $self->{main}->{username}) {
+		# skip double storage if current user same as the global override
+		$self->{user_storage} = $self->{global_storage} = $self->{default_storage};
+	    }
+	} elsif (ref($factory) =~ /DBBasedAddrList/) {
+	    $is_global    = $self->{conf}->{auto_whitelist_path} !~ /__userstate__/;
+	    $storage_type = 'DB';
+	}
+	if (!defined $self->{global_storage}) {
+	    my $sql_override_orig = $self->{conf}->{user_awl_sql_override_username};
+	    my $awl_path_orig     = $self->{conf}->{auto_whitelist_path};
+	    if ($is_global) {
+		$self->{conf}->{user_awl_sql_override_username} = '';
+		$self->{conf}->{auto_whitelist_path}            = '__userstate__/tx-reputation';
+		$self->{global_storage} = $self->{default_storage};
+		$self->{user_storage}   = $factory->new_checker($self->{main});
+	    } else {
+		$self->{conf}->{user_awl_sql_override_username} = 'GLOBAL';
+		$self->{conf}->{auto_whitelist_path}            = '__local_state_dir__/tx-reputation';
+		$self->{global_storage} = $factory->new_checker($self->{main});
+		$self->{user_storage}   = $self->{default_storage};
+	    }
+	    $self->{conf}->{user_awl_sql_override_username} = $sql_override_orig;
+	    $self->{conf}->{auto_whitelist_path}            = $awl_path_orig;
+	
+	    # Another ugly hack to find out whether the user differs from
+	    # the global one. We need to add a method to the factory handlers
+	    if ($storage_type eq 'DB' && 
+		$self->{user_storage}->{locked_file} eq $self->{global_storage}->{locked_file}) {
+		if ($is_global) 
+		     {$self->{global_storage}->finish();}
+		else {$self->{user_storage}->finish();}
+		$self->{user_storage} = $self->{global_storage} = $self->{default_storage};
+	    }
+	}
     }
   } else {
     $self->{user_storage} = $self->{global_storage} = $self->{checker} = $self->{default_storage} = undef;
