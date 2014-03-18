@@ -1,6 +1,13 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.9  2014/03/18  Ivo Truxa
+ * ENH: HELO name records are now tagged by the keyword HELO in the signedby
+        filed (otherwise unused at HELO records). This is to better avoid
+        mistaking a HELO name for IP address, domain, or email. HELO records
+        from earlier version will not be recognized; need to be relearned
+        and recorded with the HELO tag.
+
 v1.0.8  2014/03/14  Ivo Truxa
  * BF:  removed doubled "defined" from open_storages() sub
  * ENH: more foolproof checking at dual storages, avoiding duplicate records 

@@ -1287,7 +1287,7 @@ sub check_senders_reputation {
 
                      $delta += $self->check_reputations($pms, 'EMAIL_IP', $from,   $ip,   $signedby, $msgscore);
   if ($domain)      {$delta += $self->check_reputations($pms, 'DOMAIN',   $domain, $ip,   $signedby, $msgscore);}
-  if ($helo)        {$delta += $self->check_reputations($pms, 'HELO',     $helo,   undef, undef,     $msgscore);}
+  if ($helo)        {$delta += $self->check_reputations($pms, 'HELO',     $helo,   undef, 'HELO',    $msgscore);}
   if ($origip) {
     if (!$signedby) {$delta += $self->check_reputations($pms, 'EMAIL',    $from,   undef, undef,     $msgscore);}
                      $delta += $self->check_reputations($pms, 'IP',       $origip, undef, undef,     $msgscore);
@@ -1866,8 +1866,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.7
- date           2014/03/11
+ revision       1.0.9
+ date           2014/03/18
 
 =cut
 
