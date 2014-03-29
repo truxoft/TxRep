@@ -1367,8 +1367,8 @@ sub check_reputation {
         );
     } else {
         $self->{totalweight} += $weight;
-        if ($key eq 'MSG_ID') {
-            $delta = $self->total();
+        if ($key eq 'MSG_ID' && $self->count() > 0) {
+            $delta = $self->total() / $self->count();
         } elsif (defined $self->total()) {
             $delta = ($self->total() + $msgscore) / (1 + $self->count()) - $msgscore;
 
@@ -1397,7 +1397,7 @@ sub check_reputation {
                 $self->{checker}->remove_entry($self->{entry});
             }
         } else {
-            $self->add_score($msgscore);        # add the score and increment the cont
+            $self->add_score($msgscore);        # add the score and increment the count
             if ($self->{learning} && $key eq 'MSG_ID' && $self->count() eq 1) {
                 $self->add_score($msgscore);    # increasing the count by 1 at a learned score (count=2)
             }                                   # it can be distinguished from a scanned score (count=1)
@@ -1866,8 +1866,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.9
- date           2014/03/18
+ revision       1.0.10
+ date           2014/03/28
 
 =cut
 

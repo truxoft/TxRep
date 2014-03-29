@@ -1,6 +1,13 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.10 2014/03/28  Ivo Truxa
+ * BF:  corrected score (divided by the count) when forgetting a learned
+        message before re-learning it. It wrongly deduced the score twice
+        in some cases. 
+ * BF:  Change necessary in SQLBasedAddrList.pm to allow forgetting of
+        messages (decrementing the counter). DBBasedAddrList.pm is OK
+
 v1.0.9  2014/03/18  Ivo Truxa
  * ENH: HELO name records are now tagged by the keyword HELO in the signedby
         filed (otherwise unused at HELO records). This is to better avoid
