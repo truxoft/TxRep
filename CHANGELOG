@@ -1,6 +1,11 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.11 2014/03/29  Ivo Truxa
+ * ENH: added call extract_message_metadata when called through the sub
+        learn_message, to allow parsing of header metadata while learning 
+        too  (allows the extracting of IP address and HELO names)
+
 v1.0.10 2014/03/28  Ivo Truxa
  * BF:  corrected score (divided by the count) when forgetting a learned
         message before re-learning it. It wrongly deduced the score twice

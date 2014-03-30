@@ -1727,6 +1727,9 @@ sub learn_message {
   my ($self, $params) = @_;
   return 0 unless (defined $params->{isspam});
   my $pms = ($self->{last_pms})? $self->{last_pms} : Mail::SpamAssassin::PerMsgStatus->new($self->{main}, $params->{msg});
+  if (!defined $pms->{relays_internal} && !defined $pms->{relays_external}) {
+    $pms->extract_message_metadata();
+  }
 
   dbg("TxRep: learning a message");
   if ($params->{isspam})
@@ -1866,8 +1869,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.10
- date           2014/03/28
+ revision       1.0.11
+ date           2014/03/30
 
 =cut
 
