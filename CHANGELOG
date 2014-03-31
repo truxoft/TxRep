@@ -1,6 +1,11 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.12 2014/03/30  Ivo Truxa
+ * ENH: pms->{msg}->receive_date() instead of pms->date_header_time used
+        for the MSG_ID timestamp since date_header_time is not available
+        when TxRep called through the learner
+
 v1.0.11 2014/03/29  Ivo Truxa
  * ENH: added call extract_message_metadata when called through the sub
         learn_message, to allow parsing of header metadata while learning 

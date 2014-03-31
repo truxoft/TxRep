@@ -649,8 +649,6 @@ need this option at all - for compatibility with pre-3.3.0 database schema).
 A plugin DKIM should also be enabled, as otherwise there is no benefit from
 turning on this option.
 
-=back
-
 =cut  # ...................................................................
   push (@cmds, {
     setting     => 'auto_whitelist_distinguish_signed',
@@ -671,6 +669,8 @@ Note: at domains that define the useless SPF +all (pass all), no IP would be
 ever associated with the email address, and all addresses (incl. the froged
 ones) would be treated as coming from the authorized source. However, such
 domains are hopefuly rare, and ask for this kind of treatment anyway.
+
+=back
 
 =cut  # ...................................................................
   push (@cmds, {
@@ -1195,7 +1195,7 @@ sub check_senders_reputation {
   my $delta    = 0;
   my $timer    = $self->{main}->time_method("total_txrep");
   my $msgscore = (defined $self->{learning})? $self->{learning} : $pms->get_autolearn_points();
-  my $date     = $pms->{date_header_time};
+  my $date     = $pms->{msg}->receive_date() || $pms->{date_header_time};
   my $msg_id   = $self->{msgid} ||
                  Mail::SpamAssassin::Plugin::Bayes->get_msgid($pms->{msg}) ||
                  $pms->get('Message-Id') || $pms->get('Message-ID') || $pms->get('MESSAGE-ID') || $pms->get('MESSAGEID');
@@ -1726,12 +1726,13 @@ sub learn_message {
 ###########################################################################
   my ($self, $params) = @_;
   return 0 unless (defined $params->{isspam});
+
+  dbg("TxRep: learning a message");
   my $pms = ($self->{last_pms})? $self->{last_pms} : Mail::SpamAssassin::PerMsgStatus->new($self->{main}, $params->{msg});
   if (!defined $pms->{relays_internal} && !defined $pms->{relays_external}) {
     $pms->extract_message_metadata();
   }
 
-  dbg("TxRep: learning a message");
   if ($params->{isspam})
         {$self->{learning} =      $self->{conf}->{txrep_learn_penalty};}
   else  {$self->{learning} = -1 * $self->{conf}->{txrep_learn_bonus};}
