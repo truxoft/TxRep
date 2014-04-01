@@ -1,6 +1,13 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.13 2014/04/01  Ivo Truxa
+ * BF:  adjustments and fixes for manual blacklisting/whitelsiting
+ * CHG: changed blacklisting/whitelisting mechanism
+ * CHG: added more text in POD chapter about storages
+ * CHG: changed description of blacklisting/whitelisting
+ * ENH: added whitelisting/blacklisting of IPs, domains, and HELO names
+
 v1.0.12 2014/03/30  Ivo Truxa
  * ENH: pms->{msg}->receive_date() instead of pms->date_header_time used
         for the MSG_ID timestamp since date_header_time is not available
