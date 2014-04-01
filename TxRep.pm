@@ -1156,7 +1156,7 @@ DKIM signing domain or the tag 'spf' after the ID in the following way:
 When a message contains both a DKIM signature and an SPF pass, the DKIM
 signature takes the priority, so the record bound to the 'spf' tag won't 
 be checked. Only email addresses and domains can be bound to DKIM or SPF.
-Records of IP adresses and HELO names are always without DKIM/SPF.
+Records of IP addresses and HELO names are always without DKIM/SPF.
 
 In case of dual storage, the black/whitelisting is performed only in the
 default storage.
