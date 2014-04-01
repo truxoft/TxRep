@@ -1,6 +1,10 @@
 TxREP - Reputation Plugin for SpamAssassin
 ==========================================
 
+v1.0.14 2014/04/02  Ivo Truxa
+ * ENH: blacklisting/whitelisting with spf, dkim now possible
+ * BF:  added missing a-f to IP regex in white/blacklisting (IPv6)
+
 v1.0.13 2014/04/01  Ivo Truxa
  * BF:  adjustments and fixes for manual blacklisting/whitelsiting
  * CHG: changed blacklisting/whitelisting mechanism

@@ -1087,29 +1087,36 @@ sub _fn_envelope {
   unless ($self->{main}->{conf}->{use_txrep}){                                  return 0;}
   unless ($args->{address}) {$self->_message($args->{cli_p},"failed ".$msg);    return 0;}
 
-  my $signed = $args->{signedby};
   my $factor =	$self->{conf}->{txrep_weight_email} +
 		$self->{conf}->{txrep_weight_email_ip} +
 		$self->{conf}->{txrep_weight_domain} +
 		$self->{conf}->{txrep_weight_ip} +
 		$self->{conf}->{txrep_weight_helo};
+  my $sign = $args->{signedby};
+  my $id     = $args->{address};
+  if ($args->{address} =~ /,/) {
+    $sign = $args->{address};
+    $sign =~ s/^.*,//g;
+    $id   =~ s/,.*$//g;
+  }
 
-  if ($args->{address} !~ /\./ && $self->{conf}->{txrep_weight_helo})
-	{$factor /= $self->{conf}->{txrep_weight_helo}; $signed = 'helo';}
-  elsif ($args->{address} =~ /^[\d\.:]+$/ && $self->{conf}->{txrep_weight_ip})
+  # simplified regex used for IP detection (possible FP at a domain is not critical)
+  if ($id !~ /\./ && $self->{conf}->{txrep_weight_helo}) 
+	{$factor /= $self->{conf}->{txrep_weight_helo}; $sign = 'helo';}
+  elsif ($id =~ /^[a-f\d\.:]+$/ && $self->{conf}->{txrep_weight_ip})
 	{$factor /= $self->{conf}->{txrep_weight_ip};}
-  elsif ($args->{address} =~ /@/ && $self->{conf}->{txrep_weight_email})
+  elsif ($id =~ /@/ && $self->{conf}->{txrep_weight_email})
 	{$factor /= $self->{conf}->{txrep_weight_email};}
-  elsif ($args->{address} !~ /@/ && $self->{conf}->{txrep_weight_domain})
+  elsif ($id !~ /@/ && $self->{conf}->{txrep_weight_domain})
 	{$factor /= $self->{conf}->{txrep_weight_domain};}
   else	{$factor  = 1;}
 
   $self->open_storages();
   my $score  = (!defined $value)? undef : $factor * $value;
-  my $status = $self->modify_reputation($args->{address}, $score, $signed);
-  dbg("TxRep: $msg %s (score %s) %s", $args->{address}, $score || 'undef', $signed || '');
+  my $status = $self->modify_reputation($id, $score, $sign);
+  dbg("TxRep: $msg %s (score %s) %s", $id, $score || 'undef', $sign || '');
   eval {
-    $self->_message($args->{cli_p}, ($status?"":"error ") . $msg . ": " . $args->{address});
+    $self->_message($args->{cli_p}, ($status?"":"error ") . $msg . ": " . $id);
     if (!defined $self->{txKeepStoreTied}) {$self->finish();}
     1;
   } or return $self->_fail_exit( $@ );
@@ -1138,6 +1145,18 @@ will be removed from the database, and only the standalone record is kept.
 Besides blacklisting/whitelisting of standalone email addresses, the same
 method may be used also for blacklisting/whitelisting of IP addresses,
 domain names, and HELO names (only dotless Netbios HELO names can be used).
+
+When whitelisting/blacklisting an email address or domain name, you can
+bind them to a specified DKIM signature or SPF record by appending the 
+DKIM signing domain or the tag 'spf' after the ID in the following way:
+
+ spamassassin --add-addr-to-blacklist=spamming.biz,spf
+ spamassassin --add-addr-to-whitelist=friend@good.org,good.org
+
+When a message contains both a DKIM signature and an SPF pass, the DKIM
+signature takes the priority, so the record bound to the 'spf' tag won't 
+be checked. Only email addresses and domains can be bound to DKIM or SPF.
+Records of IP adresses and HELO names are always without DKIM/SPF.
 
 In case of dual storage, the black/whitelisting is performed only in the
 default storage.
@@ -1300,7 +1319,7 @@ sub check_senders_reputation {
     $domain   = $signedby;
   } elsif ($pms->{spf_pass} && $self->{conf}->{txrep_spf}) {
     $ip       = undef;
-    $signedby = 'SPF';
+    $signedby = 'spf';
   }
 
   my $totalweight      = 0;
@@ -1900,8 +1919,8 @@ by Ivo Truxa <truxa@truxoft.com>
 Parts of code of the AWL and Bayes SpamAssassin plugins used as a starting
 template.
 
- revision       1.0.13
- date           2014/04/01
+ revision       1.0.14
+ date           2014/04/02
 
 =cut
 
